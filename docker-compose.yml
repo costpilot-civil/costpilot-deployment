@@ -1,0 +1,55 @@
+name: costpilot
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: costpilot-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /data/postgres
+
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+
+    volumes:
+      - ./data/postgres:/data/postgres
+      - ../costpilot-database/sql/schema_v3.sql:/docker-entrypoint-initdb.d/03-schema.sql:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ..
+      dockerfile: costpilot-backend/Dockerfile
+    container_name: costpilot-backend
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      MODELS_CONFIG_PATH: /app/config/models.yml
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      - ./models:/models:ro
+      - ./config/models.yml:/app/config/models.yml:ro
