@@ -34,6 +34,7 @@ services:
       dockerfile: costpilot-backend/Dockerfile
     container_name: costpilot-backend
     restart: unless-stopped
+    gpus: all
 
     depends_on:
       postgres:
@@ -48,9 +49,13 @@ services:
       MODELS_CONFIG_PATH: /app/config/models.yml
       MATERIALS_CONFIG_PATH: /app/costpilot-core/config/materials/materials_registry.yaml
 
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE: /app/logs/backend.log
+
     ports:
       - "127.0.0.1:8000:8000"
 
     volumes:
       - ./models:/models:ro
       - ./config/models.yml:/app/config/models.yml:ro
+      - ./logs/backend:/app/logs
